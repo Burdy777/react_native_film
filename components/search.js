@@ -2,7 +2,7 @@ import React from 'react'
 import { View, TextInput, Button, FlatList,ActivityIndicator } from 'react-native';
 import FilmItem from './filmItem';
 import {getFilmsFromApiWithSearchedText} from './../api/TMDBApi'
-import films from './../helpers/filmsData'
+import { connect } from 'react-redux'
 
 class Search extends React.Component {
 
@@ -50,6 +50,20 @@ class Search extends React.Component {
        }
   }
 
+  _searchFilm() {
+    this.page = 0;
+    this.totalPages = 0;
+    this.setState({
+        films: [],
+    }, () => {
+        console.log('total page: ',this.totalPages, 'this.page: ', this.page, 'nombre de film: ',this.state.films.length);
+        this._loadFilms();
+    })
+  }
+
+  _displayDetailForFilm = (idFilm) => {
+    this.props.navigation.navigate("FilmDetail", { idFilm: idFilm })
+  }
 
     render() {
         return (
@@ -59,23 +73,28 @@ class Search extends React.Component {
                  placeholder='Entrer un film'
                   style={style.input}
                   onChangeText={(text) => this.searchedText = text}
-                  onSubmitEditing={() => this._loadFilms()}
+                  onSubmitEditing={() => this._searchFilm()}
                   />
 
                 <Button 
                     title='Je veux ce film !'
                     style={style.button}
-                    onPress = { ()=>{ this._loadFilms() } }
+                    onPress = { ()=>{ this._searchFilm() } }
                 />
 
             {/* composant FlatList avec item courant (prend une view) , une clef, et les données */}
             <FlatList
-            renderItem={ ({item}) => <FilmItem film={item}/>  }
+            renderItem={ ({item}) => <FilmItem 
+            // Ajout d'une props isFilmFavorite pour indiquer à l'item d'afficher un 🖤 ou non
+            isFilmFavorite={(this.props.favoritesFilm.findIndex(film => film.id === item.id) !== -1) ? true : false}
+            film={item} displayDetailForFilm={this._displayDetailForFilm}/>  }
             keyExtractor={(item) => item.id.toString()}
             data={ this.state.films }
             onEndReachedThreshold={0.5}
             onEndReached={() => {
-                console.log("onEndReached")
+                if(this.page < this.totalPages) {
+                this._loadFilms()
+                }
             }}
             />
 
@@ -89,7 +108,6 @@ class Search extends React.Component {
 const style = {
     container :{
         marginTop:75,
-        flexDirection:'row',
         justifyContent:'space-around',
     },
     button: {
@@ -108,4 +126,11 @@ const style = {
         justifyContent: 'center'
     }
 }
-export default Search;
+// On connecte le store Redux, ainsi que les films favoris du state de notre application, à notre component Search
+const mapStateToProps = state => {
+    return {
+      favoritesFilm: state.favoritesFilm
+    }
+  }
+  
+  export default connect(mapStateToProps)(Search)
